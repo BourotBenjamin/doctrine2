@@ -384,7 +384,7 @@ abstract class AbstractHydrator
                     'isScalar'             => true,
                     'isNewObjectParameter' => true,
                     'fieldName'            => $this->_rsm->scalarMappings[$key],
-                    'type'                 => Type::getType($this->_rsm->typeMappings[$key]),
+                    'type'                 => is_null($fieldMapping)?Type::getType("string"):Type::getType($fieldMapping['type']),
                     'argIndex'             => $mapping['argIndex'],
                     'objIndex'             => $mapping['objIndex'],
                     'class'                => new \ReflectionClass($mapping['className']),
