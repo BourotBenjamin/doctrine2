@@ -368,11 +368,10 @@ abstract class AbstractHydrator
                 $classMetadata = $this->getClassMetadata($this->_rsm->declaringClasses[$key]);
                 $fieldName     = $this->_rsm->fieldMappings[$key];
                 $fieldMapping  = $classMetadata->fieldMappings[$fieldName];
-
                 return $this->_cache[$key] = array(
                     'isIdentifier' => in_array($fieldName, $classMetadata->identifier),
                     'fieldName'    => $fieldName,
-                    'type'         => Type::getType($fieldMapping['type']),
+                    'type'         => is_null($fieldMapping)?Type::getType("string"):Type::getType($fieldMapping['type']),
                     'dqlAlias'     => $this->_rsm->columnOwnerMap[$key],
                 );
 

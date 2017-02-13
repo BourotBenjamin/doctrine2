@@ -338,11 +338,11 @@ class UnitOfWork implements PropertyChangedListener
         }
 
         if ( ! ($this->entityInsertions ||
-                $this->entityDeletions ||
-                $this->entityUpdates ||
-                $this->collectionUpdates ||
-                $this->collectionDeletions ||
-                $this->orphanRemovals)) {
+            $this->entityDeletions ||
+            $this->entityUpdates ||
+            $this->collectionUpdates ||
+            $this->collectionDeletions ||
+            $this->orphanRemovals)) {
             $this->dispatchOnFlushEvent();
             $this->dispatchPostFlushEvent();
 
@@ -1376,8 +1376,8 @@ class UnitOfWork implements PropertyChangedListener
         $oid = spl_object_hash($entity);
 
         return isset($this->entityInsertions[$oid])
-            || isset($this->entityUpdates[$oid])
-            || isset($this->entityDeletions[$oid]);
+        || isset($this->entityUpdates[$oid])
+        || isset($this->entityDeletions[$oid]);
     }
 
     /**
@@ -2072,7 +2072,7 @@ class UnitOfWork implements PropertyChangedListener
                 case ($relatedEntities instanceof PersistentCollection):
                     // Unwrap so that foreach() does not initialize
                     $relatedEntities = $relatedEntities->unwrap();
-                    // break; is commented intentionally!
+                // break; is commented intentionally!
 
                 case ($relatedEntities instanceof Collection):
                 case (is_array($relatedEntities)):
@@ -2115,7 +2115,7 @@ class UnitOfWork implements PropertyChangedListener
                 case ($relatedEntities instanceof PersistentCollection):
                     // Unwrap so that foreach() does not initialize
                     $relatedEntities = $relatedEntities->unwrap();
-                    // break; is commented intentionally!
+                // break; is commented intentionally!
 
                 case ($relatedEntities instanceof Collection):
                 case (is_array($relatedEntities)):
@@ -2198,7 +2198,7 @@ class UnitOfWork implements PropertyChangedListener
                 case ($relatedEntities instanceof PersistentCollection):
                     // Unwrap so that foreach() does not initialize
                     $relatedEntities = $relatedEntities->unwrap();
-                    // break; is commented intentionally!
+                // break; is commented intentionally!
 
                 case ($relatedEntities instanceof Collection):
                 case (is_array($relatedEntities)):
@@ -2567,6 +2567,10 @@ class UnitOfWork implements PropertyChangedListener
         foreach ($data as $field => $value) {
             if (isset($class->fieldMappings[$field])) {
                 $class->reflFields[$field]->setValue($entity, $value);
+            } elseif(!isset($class->associationMappings[$field])) {
+                $method = "set".ucfirst($field);
+                if(method_exists($entity, $method))
+                    $entity->$method($value);
             }
         }
 
