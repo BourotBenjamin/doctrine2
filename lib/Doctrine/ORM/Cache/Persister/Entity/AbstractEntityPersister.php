@@ -422,7 +422,6 @@ abstract class AbstractEntityPersister implements CachedEntityPersister
         if($result !== null) {
             foreach ($result as $subresult) {
                 if(is_object($subresult) && method_exists($subresult, "isCacheValid") && !$subresult->isCacheValid()) {
-                    $hints[Query::HINT_REFRESH] = true;
                     $result = null;
                     break;
                 }
@@ -469,7 +468,7 @@ abstract class AbstractEntityPersister implements CachedEntityPersister
 
             if (($entity = $this->hydrator->loadCacheEntry($class, $cacheKey, $cacheEntry, $entity)) !== null) {
                 if(is_object($entity) && method_exists($entity, "isCacheValid") && !$entity->isCacheValid()) {
-                    $hints[Query::HINT_REFRESH] = true;
+                    $entity = null;
                 } else {
                     if ($this->cacheLogger) {
                         $this->cacheLogger->entityCacheHit($this->regionName, $cacheKey);
@@ -574,8 +573,7 @@ abstract class AbstractEntityPersister implements CachedEntityPersister
             if ($list !== null) {
                 foreach ($list as $entity) {
                     if(is_object($entity) && method_exists($entity, "isCacheValid") && !$entity->isCacheValid()) {
-                        $hints[Query::HINT_REFRESH] = true;
-                        $list = nul;
+                        $list = null;
                     }
                 }
             }
@@ -618,7 +616,6 @@ abstract class AbstractEntityPersister implements CachedEntityPersister
             if ($list !== null) {
                 foreach ($list as $entity) {
                     if(is_object($entity) && method_exists($entity, "isCacheValid") && !$entity->isCacheValid()) {
-                        $hints[Query::HINT_REFRESH] = true;
                         $list = null;
                     }
                 }
