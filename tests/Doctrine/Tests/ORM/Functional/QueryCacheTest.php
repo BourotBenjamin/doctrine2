@@ -109,7 +109,7 @@ class QueryCacheTest extends OrmFunctionalTestCase
 
         $query = $this->_em->createQuery('select ux from Doctrine\Tests\Models\CMS\CmsUser ux');
 
-        $cache = $this->createMock(Cache::class);
+        $cache = $this->getMock('Doctrine\Common\Cache\Cache');
 
         $query->setQueryCacheDriver($cache);
 
@@ -136,6 +136,7 @@ class QueryCacheTest extends OrmFunctionalTestCase
                     ->will($this->returnValue( 10 ));
 
         $parserResultMock = $this->createMock(ParserResult::class);
+        $parserResultMock->method('getParameterMappings')->willReturn(array());
         $parserResultMock->expects($this->once())
                          ->method('getSqlExecutor')
                          ->will($this->returnValue($sqlExecMock));

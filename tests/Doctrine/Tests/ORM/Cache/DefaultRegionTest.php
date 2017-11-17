@@ -4,11 +4,12 @@ namespace Doctrine\Tests\ORM\Cache;
 
 use Doctrine\Common\Cache\ApcCache;
 use Doctrine\Common\Cache\ArrayCache;
-use Doctrine\Common\Cache\Cache;
 use Doctrine\ORM\Cache\CollectionCacheEntry;
+use Doctrine\Common\Cache\Cache;
 use Doctrine\ORM\Cache\Region\DefaultRegion;
 use Doctrine\Tests\Mocks\CacheEntryMock;
 use Doctrine\Tests\Mocks\CacheKeyMock;
+
 
 /**
  * @group DDC-2183
@@ -28,7 +29,7 @@ class DefaultRegionTest extends AbstractRegionTest
 
     public function testSharedRegion()
     {
-        if ( ! extension_loaded('apc') || false === @apc_cache_info()) {
+        if ( ! extension_loaded('apc') || ! is_array(@apc_cache_info("user"))) {
             $this->markTestSkipped('The ' . __CLASS__ .' requires the use of APC');
         }
 

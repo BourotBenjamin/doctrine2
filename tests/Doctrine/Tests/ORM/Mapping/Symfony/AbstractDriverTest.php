@@ -48,8 +48,10 @@ abstract class AbstractDriverTest extends \PHPUnit_Framework_TestCase
 
     public function testFindMappingFileNamespacedFoundFileNotFound()
     {
-        $this->expectException(MappingException::class);
-        $this->expectExceptionMessage('No mapping file found named');
+        $this->setExpectedException(
+            'Doctrine\Common\Persistence\Mapping\MappingException',
+            "No mapping file found named"
+        );
 
         $driver = $this->getDriver(array(
             'MyNamespace\MySubnamespace\Entity' => $this->dir,

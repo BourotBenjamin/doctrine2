@@ -325,7 +325,6 @@ abstract class OrmFunctionalTestCase extends OrmTestCase
         if ( ! $conn) {
             return;
         }
-
         $platform = $conn->getDatabasePlatform();
 
         $this->_sqlLoggerStack->enabled = false;

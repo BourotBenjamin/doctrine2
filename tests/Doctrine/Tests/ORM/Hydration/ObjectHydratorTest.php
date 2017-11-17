@@ -10,6 +10,8 @@ use Doctrine\ORM\Query;
 use Doctrine\Tests\Models\Hydration\EntityWithArrayDefaultArrayValueM2M;
 use Doctrine\Tests\Models\Hydration\SimpleEntity;
 
+use Doctrine\Tests\Models\CMS\CmsUser;
+
 class ObjectHydratorTest extends HydrationTestCase
 {
     public function provideDataForUserEntityResult()
@@ -1969,16 +1971,14 @@ class ObjectHydratorTest extends HydrationTestCase
         $rsm->addFieldResult('e1', 'a1__id', 'id');
         $rsm->addFieldResult('e2', 'e2__id', 'id');
 
-        $resultSet = array(
-            array(
-                'a1__id' => '1',
-                'e2__id' => '1',
-            )
-        );
-
-        $stmt     = new HydratorMockStatement($resultSet);
-        $hydrator = new \Doctrine\ORM\Internal\Hydration\ObjectHydrator($this->_em);
-        $result   = $hydrator->hydrateAll($stmt, $rsm);
+        $result = (new \Doctrine\ORM\Internal\Hydration\ObjectHydrator($this->_em))
+            ->hydrateAll(
+                new HydratorMockStatement([[
+                    'a1__id' => '1',
+                    'e2__id' => '1',
+                ]]),
+                $rsm
+            );
 
         $this->assertCount(1, $result);
         $this->assertInstanceOf(EntityWithArrayDefaultArrayValueM2M::CLASSNAME, $result[0]);

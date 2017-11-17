@@ -40,7 +40,7 @@ class CacheMetadataListener
      *
      * @return bool
      */
-    private function isVisited(ClassMetadata $metadata)
+    private function isVisited(ClassMetaData $metadata)
     {
         return isset($this->enabledItems[$metadata->getName()]);
     }
@@ -48,7 +48,7 @@ class CacheMetadataListener
     /**
      * @param ClassMetadata $metadata
      */
-    private function recordVisit(ClassMetadata $metadata)
+    private function recordVisit(ClassMetaData $metadata)
     {
         $this->enabledItems[$metadata->getName()] = true;
     }

@@ -2,6 +2,9 @@
 
 namespace Doctrine\Tests\ORM\Tools;
 
+use Doctrine\ORM\Mapping\ClassMetadata;
+use Doctrine\ORM\Tools\Event\GenerateSchemaEventArgs;
+use Doctrine\ORM\Tools\Event\GenerateSchemaTableEventArgs;
 use Doctrine\ORM\Tools\SchemaTool;
 use Doctrine\ORM\Tools\ToolEvents;
 use Doctrine\ORM\Tools\Event\GenerateSchemaTableEventArgs;
@@ -123,9 +126,10 @@ class SchemaToolTest extends OrmTestCase
      */
     public function testSchemaHasProperIndexesFromUniqueConstraintAnnotation()
     {
-        $em         = $this->_getTestEntityManager();
+        $em = $this->_getTestEntityManager();
         $schemaTool = new SchemaTool($em);
-        $classes    = [
+
+        $classes = [
             $em->getClassMetadata(__NAMESPACE__ . '\\UniqueConstraintAnnotationModel'),
         ];
 
@@ -139,23 +143,24 @@ class SchemaToolTest extends OrmTestCase
         $this->assertTrue($table->hasIndex('uniq_hash'));
     }
 
-    public function testRemoveUniqueIndexOverruledByPrimaryKey()
+    public function testSetDiscriminatorColumnWithoutLength()
     {
         $em         = $this->_getTestEntityManager();
         $schemaTool = new SchemaTool($em);
-        $classes    = [
-            $em->getClassMetadata(__NAMESPACE__ . '\\FirstEntity'),
-            $em->getClassMetadata(__NAMESPACE__ . '\\SecondEntity')
-        ];
+        $metadata   = $em->getClassMetadata(__NAMESPACE__ . '\\FirstEntity');
 
-        $schema = $schemaTool->getSchemaFromMetadata($classes);
+        $metadata->setInheritanceType(ClassMetadata::INHERITANCE_TYPE_SINGLE_TABLE);
+        $metadata->setDiscriminatorColumn(['name' => 'discriminator', 'type' => 'string']);
 
-        $this->assertTrue($schema->hasTable('first_entity'), "Table first_entity should exist.");
+        $schema = $schemaTool->getSchemaFromMetadata([$metadata]);
 
-        $indexes = $schema->getTable('first_entity')->getIndexes();
+        $this->assertTrue($schema->hasTable('first_entity'));
+        $table = $schema->getTable('first_entity');
 
-        $this->assertCount(1, $indexes, "there should be only one index");
-        $this->assertTrue(current($indexes)->isPrimary(), "index should be primary");
+        $this->assertTrue($table->hasColumn('discriminator'));
+        $column = $table->getColumn('discriminator');
+
+        $this->assertEquals(255, $column->getLength());
     }
 }
 

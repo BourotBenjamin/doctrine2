@@ -2,14 +2,15 @@
 
 namespace Doctrine\Tests\ORM\Functional;
 
+use Doctrine\ORM\OptimisticLockException;
+use Doctrine\ORM\ORMException;
 use Doctrine\Tests\Models\VersionedManyToOne\Article;
 use Doctrine\Tests\Models\VersionedManyToOne\Category;
-use Doctrine\Tests\OrmFunctionalTestCase;
 
 /**
  * @group MergeVersionedOneToMany
  */
-class MergeVersionedManyToOneTest extends OrmFunctionalTestCase
+class MergeVersionedManyToOneTest extends \Doctrine\Tests\OrmFunctionalTestCase
 {
     protected function setUp()
     {

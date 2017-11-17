@@ -175,7 +175,6 @@ abstract class Identified
 {
     /** @Id @Column(type="integer") @GeneratedValue */
     private $id;
-
     public function getId()
     {
         return $this->id;

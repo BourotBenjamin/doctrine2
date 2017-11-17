@@ -3,8 +3,11 @@
 namespace Doctrine\Tests\ORM;
 
 use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\EventManager;
 use Doctrine\Common\NotifyPropertyChanged;
+use Doctrine\Common\Persistence\Event\LifecycleEventArgs;
 use Doctrine\Common\PropertyChangedListener;
+use Doctrine\ORM\Events;
 use Doctrine\ORM\Mapping\ClassMetadata;
 use Doctrine\ORM\ORMInvalidArgumentException;
 use Doctrine\ORM\UnitOfWork;
@@ -48,16 +51,20 @@ class UnitOfWorkTest extends OrmTestCase
      */
     private $_emMock;
 
-    protected function setUp() {
+    /**
+     * @var EventManager|\PHPUnit_Framework_MockObject_MockObject
+     */
+    private $eventManager;
+
+    protected function setUp()
+    {
         parent::setUp();
-        $this->_connectionMock = new ConnectionMock(array(), new DriverMock());
-        $this->_emMock = EntityManagerMock::create($this->_connectionMock);
+        $this->_connectionMock = new ConnectionMock([], new DriverMock());
+        $this->eventManager = $this->getMockBuilder('Doctrine\Common\EventManager')->getMock();
+        $this->_emMock = EntityManagerMock::create($this->_connectionMock, null, $this->eventManager);
         // SUT
         $this->_unitOfWork = new UnitOfWorkMock($this->_emMock);
         $this->_emMock->setUnitOfWork($this->_unitOfWork);
-    }
-
-    protected function tearDown() {
     }
 
     public function testRegisterRemovedOnNewEntityIsIgnored()
@@ -342,7 +349,7 @@ class UnitOfWorkTest extends OrmTestCase
         $this->_unitOfWork->persist($entity2);
         $this->assertTrue($this->_unitOfWork->isInIdentityMap($entity2));
 
-        $this->_unitOfWork->clear(Country::class);
+        $this->_unitOfWork->clear(Country::CLASSNAME);
         $this->assertTrue($this->_unitOfWork->isInIdentityMap($entity1));
         $this->assertFalse($this->_unitOfWork->isInIdentityMap($entity2));
         $this->assertTrue($this->_unitOfWork->isScheduledForInsert($entity1));
@@ -364,6 +371,116 @@ class UnitOfWorkTest extends OrmTestCase
             [new stdClass()],
             [new ArrayCollection()],
         ];
+    }
+
+    /**
+     * @group 5689
+     * @group 1465
+     */
+    public function testObjectHashesOfMergedEntitiesAreNotUsedInOriginalEntityDataMap()
+    {
+        $user       = new CmsUser();
+        $user->name = 'ocramius';
+        $mergedUser = $this->_unitOfWork->merge($user);
+
+        self::assertSame([], $this->_unitOfWork->getOriginalEntityData($user), 'No original data was stored');
+        self::assertSame([], $this->_unitOfWork->getOriginalEntityData($mergedUser), 'No original data was stored');
+
+
+        $user       = null;
+        $mergedUser = null;
+
+        // force garbage collection of $user (frees the used object hashes, which may be recycled)
+        gc_collect_cycles();
+
+        $newUser       = new CmsUser();
+        $newUser->name = 'ocramius';
+
+        $this->_unitOfWork->persist($newUser);
+
+        self::assertSame([], $this->_unitOfWork->getOriginalEntityData($newUser), 'No original data was stored');
+    }
+
+    /**
+     * @group DDC-1955
+     * @group 5570
+     * @group 6174
+     */
+    public function testMergeWithNewEntityWillPersistItAndTriggerPrePersistListenersWithMergedEntityData()
+    {
+        $entity = new EntityWithRandomlyGeneratedField();
+
+        $generatedFieldValue = $entity->generatedField;
+
+        $this
+            ->eventManager
+            ->expects(self::any())
+            ->method('hasListeners')
+            ->willReturnCallback(function ($eventName) {
+                return $eventName === Events::prePersist;
+            });
+        $this
+            ->eventManager
+            ->expects(self::once())
+            ->method('dispatchEvent')
+            ->with(
+                self::anything(),
+                self::callback(function (LifecycleEventArgs $args) use ($entity, $generatedFieldValue) {
+                    /* @var $object EntityWithRandomlyGeneratedField */
+                    $object = $args->getObject();
+
+                    self::assertInstanceOf('Doctrine\Tests\ORM\EntityWithRandomlyGeneratedField', $object);
+                    self::assertNotSame($entity, $object);
+                    self::assertSame($generatedFieldValue, $object->generatedField);
+
+                    return true;
+                })
+            );
+
+        /* @var $object EntityWithRandomlyGeneratedField */
+        $object = $this->_unitOfWork->merge($entity);
+
+        self::assertNotSame($object, $entity);
+        self::assertInstanceOf('Doctrine\Tests\ORM\EntityWithRandomlyGeneratedField', $object);
+        self::assertSame($object->generatedField, $entity->generatedField);
+    }
+
+    /**
+     * @group DDC-1955
+     * @group 5570
+     * @group 6174
+     */
+    public function testMergeWithExistingEntityWillNotPersistItNorTriggerPrePersistListeners()
+    {
+        $persistedEntity = new EntityWithRandomlyGeneratedField();
+        $mergedEntity    = new EntityWithRandomlyGeneratedField();
+
+        $mergedEntity->id = $persistedEntity->id;
+        $mergedEntity->generatedField = mt_rand(
+            $persistedEntity->generatedField + 1,
+            $persistedEntity->generatedField + 1000
+        );
+
+        $this
+            ->eventManager
+            ->expects(self::any())
+            ->method('hasListeners')
+            ->willReturnCallback(function ($eventName) {
+                return $eventName === Events::prePersist;
+            });
+        $this->eventManager->expects(self::never())->method('dispatchEvent');
+
+        $this->_unitOfWork->registerManaged(
+            $persistedEntity,
+            ['id' => $persistedEntity->id],
+            ['generatedField' => $persistedEntity->generatedField]
+        );
+
+        /* @var $merged EntityWithRandomlyGeneratedField */
+        $merged = $this->_unitOfWork->merge($mergedEntity);
+
+        self::assertSame($merged, $persistedEntity);
+        self::assertSame($persistedEntity->generatedField, $mergedEntity->generatedField);
     }
 
     /**
@@ -633,4 +750,22 @@ class EntityWithCompositeStringIdentifier
      * @var string|null
      */
     public $id2;
+}
+
+/** @Entity */
+class EntityWithRandomlyGeneratedField
+{
+    /** @Id @Column(type="string") */
+    public $id;
+
+    /**
+     * @Column(type="integer")
+     */
+    public $generatedField;
+
+    public function __construct()
+    {
+        $this->id             = uniqid('id', true);
+        $this->generatedField = mt_rand(0, 100000);
+    }
 }

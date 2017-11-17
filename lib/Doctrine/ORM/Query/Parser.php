@@ -980,6 +980,12 @@ class Parser
             $schemaName = $this->em->getConfiguration()->getEntityNamespace($namespaceAlias) . '\\' . $simpleClassName;
         }
 
+        $exists = class_exists($schemaName, true) || interface_exists($schemaName, true);
+
+        if ( ! $exists) {
+            $this->semanticalError("Class '$schemaName' is not defined.", $this->lexer->token);
+        }
+
         return $schemaName;
     }
 
