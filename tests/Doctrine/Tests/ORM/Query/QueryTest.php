@@ -5,6 +5,7 @@ namespace Doctrine\Tests\ORM\Query;
 use Doctrine\Common\Cache\ArrayCache;
 use Doctrine\Common\Collections\ArrayCollection;
 
+use Doctrine\DBAL\Cache\QueryCacheProfile;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Query\Parameter;
 use Doctrine\Tests\Mocks\DriverConnectionMock;
@@ -202,44 +203,78 @@ class QueryTest extends OrmTestCase
     }
 
     /**
-     * @group DDC-3714
+     * @group 6699
      */
-    public function testResultCacheCaching()
+    public function testGetParameterTypeJuggling()
     {
-        $this->_em->getConfiguration()->setResultCacheImpl(new ArrayCache());
-        $this->_em->getConfiguration()->setQueryCacheImpl(new ArrayCache());
-        /** @var DriverConnectionMock $driverConnectionMock */
-        $driverConnectionMock = $this->_em->getConnection()->getWrappedConnection();
-        $stmt = new StatementArrayMock([
-            [
-                'id_0' => 1,
-            ]
-        ]);
-        $driverConnectionMock->setStatementMock($stmt);
-        $res = $this->_em->createQuery("select u from Doctrine\Tests\Models\CMS\CmsUser u")
-            ->useQueryCache(true)
-            ->useResultCache(true, 60)
-            //let it cache
-            ->getResult();
+        $query = $this->_em->createQuery('select u from Doctrine\Tests\Models\CMS\CmsUser u where u.id = ?0');
 
-        $this->assertCount(1, $res);
+        $query->setParameter(0, 0);
 
-        $driverConnectionMock->setStatementMock(null);
-
-        $res = $this->_em->createQuery("select u from Doctrine\Tests\Models\CMS\CmsUser u")
-            ->useQueryCache(true)
-            ->useResultCache(false)
-            ->getResult();
-        $this->assertCount(0, $res);
+        self::assertCount(1, $query->getParameters());
+        self::assertSame(0, $query->getParameter(0)->getValue());
+        self::assertSame(0, $query->getParameter('0')->getValue());
     }
 
     /**
-     * @group DDC-3741
+     * @group 6699
      */
-    public function testSetHydrationCacheProfileNull()
+    public function testSetParameterWithNameZeroIsNotOverridden()
     {
-        $query = $this->_em->createQuery();
-        $query->setHydrationCacheProfile(null);
-        $this->assertNull($query->getHydrationCacheProfile());
+        $query = $this->_em->createQuery('select u from Doctrine\Tests\Models\CMS\CmsUser u where u.id != ?0 and u.username = :name');
+
+        $query->setParameter(0, 0);
+        $query->setParameter('name', 'Doctrine');
+
+        self::assertCount(2, $query->getParameters());
+        self::assertSame(0, $query->getParameter('0')->getValue());
+        self::assertSame('Doctrine', $query->getParameter('name')->getValue());
+    }
+
+    /**
+     * @group 6699
+     */
+    public function testSetParameterWithNameZeroDoesNotOverrideAnotherParameter()
+    {
+        $query = $this->_em->createQuery('select u from Doctrine\Tests\Models\CMS\CmsUser u where u.id != ?0 and u.username = :name');
+
+        $query->setParameter('name', 'Doctrine');
+        $query->setParameter(0, 0);
+
+        self::assertCount(2, $query->getParameters());
+        self::assertSame(0, $query->getParameter(0)->getValue());
+        self::assertSame('Doctrine', $query->getParameter('name')->getValue());
+    }
+
+    /**
+     * @group 6699
+     */
+    public function testSetParameterWithTypeJugglingWorks()
+    {
+        $query = $this->_em->createQuery('select u from Doctrine\Tests\Models\CMS\CmsUser u where u.id != ?0 and u.username = :name');
+
+        $query->setParameter('0', 1);
+        $query->setParameter('name', 'Doctrine');
+        $query->setParameter(0, 2);
+        $query->setParameter('0', 3);
+
+        self::assertCount(2, $query->getParameters());
+        self::assertSame(3, $query->getParameter(0)->getValue());
+        self::assertSame(3, $query->getParameter('0')->getValue());
+        self::assertSame('Doctrine', $query->getParameter('name')->getValue());
+    }
+
+    /**
+     * @group 6748
+     */
+    public function testResultCacheProfileCanBeRemovedViaSetter()
+    {
+        $this->_em->getConfiguration()->setResultCacheImpl(new ArrayCache());
+
+        $query = $this->_em->createQuery('SELECT u FROM Doctrine\Tests\Models\CMS\CmsUser u');
+        $query->useResultCache(true);
+        $query->setResultCacheProfile();
+
+        self::assertAttributeSame(null, '_queryCacheProfile', $query);
     }
 }
