@@ -384,12 +384,12 @@ abstract class AbstractHydrator
             case (isset($this->_rsm->fieldMappings[$key])):
                 $classMetadata = $this->getClassMetadata($this->_rsm->declaringClasses[$key]);
                 $fieldName     = $this->_rsm->fieldMappings[$key];
-                $fieldMapping  = $classMetadata->fieldMappings[$fieldName];
+                $fieldMapping  = $classMetadata->fieldMappings[$fieldName] ?? null;
                 $ownerMap      = $this->_rsm->columnOwnerMap[$key];
                 $columnInfo    = [
                     'isIdentifier' => \in_array($fieldName, $classMetadata->identifier, true),
                     'fieldName'    => $fieldName,
-                    'type'         => Type::getType($fieldMapping['type']),
+                    'type'         => is_null($fieldMapping)?Type::getType("string"):Type::getType($fieldMapping['type']),
                     'dqlAlias'     => $ownerMap,
                 ];
 

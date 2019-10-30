@@ -2668,6 +2668,10 @@ class UnitOfWork implements PropertyChangedListener
         foreach ($data as $field => $value) {
             if (isset($class->fieldMappings[$field])) {
                 $class->reflFields[$field]->setValue($entity, $value);
+            } elseif(!isset($class->associationMappings[$field])) {
+                $method = "set".ucfirst($field);
+                if(method_exists($entity, $method))
+                    $entity->$method($value);
             }
         }
 
